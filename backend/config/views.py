@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.forms import UserCreationForm
 from django.http import HttpResponse
 from config.users.models import Expense
 
@@ -7,6 +8,18 @@ def index(request):
 
 def dashboard(request):
     return render(request, 'dashboard.html')
+
+def register(request):
+    if request.method == 'GET':
+        form = UserCreationForm()
+        return render(request, 'register.html', {'form': form})
+    
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('login')
+        return render(request, 'register.html', {'form': form})
 
 def add(request):
     if request.method == 'GET':
