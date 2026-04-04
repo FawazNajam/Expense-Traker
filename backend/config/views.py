@@ -1,13 +1,24 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.forms import UserCreationForm
-from django.http import HttpResponse
+from django.contrib.auth import authenticate, login
+from django.http import HttpResponse, JsonResponse
 from config.users.models import Expense
+import json
 
 def index(request):
     return render(request, 'index.html')
 
 def dashboard(request):
     return render(request, 'dashboard.html')
+
+def login(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        user = authenticate(username=data['username'], password=data['password'])
+        if user is not None:
+            login(request, user)
+            return JsonResponse({'message': 'ok'})
+        return JsonResponse({'error': 'Invalid User Credentials'}, status=401)
 
 def register(request):
     if request.method == 'GET':
