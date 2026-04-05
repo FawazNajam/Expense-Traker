@@ -17,7 +17,8 @@ function Login() {
         const data = await res.json()
 
         if (res.ok) {
-            navigate('/expenses')
+            localStorage.setItem('token', data.access)
+            navigate('/dashboard')
         } else {
             setError(data.error)
         }

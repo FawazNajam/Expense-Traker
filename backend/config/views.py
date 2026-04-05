@@ -1,62 +1,64 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth import authenticate, login
-from django.http import HttpResponse, JsonResponse
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from config.users.models import Expense
-import json
 
-def index(request):
-    return render(request, 'index.html')
 
-def dashboard(request):
-    return render(request, 'dashboard.html')
+@api_view(['POST'])
+def register_view(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
 
-def login(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        user = authenticate(username=data['username'], password=data['password'])
-        if user is not None:
-            login(request, user)
-            return JsonResponse({'message': 'ok'})
-        return JsonResponse({'error': 'Invalid User Credentials'}, status=401)
+    if User.objects.filter(username=username).exists():
+        return Response({'error': 'Username already taken'}, status=400)
 
-def register(request):
-    if request.method == 'GET':
-        form = UserCreationForm()
-        return render(request, 'register.html', {'form': form})
-    
-    if request.method == 'POST':
-        form = UserCreationForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('login')
-        return render(request, 'register.html', {'form': form})
+    User.objects.create_user(username=username, password=password)
+    return Response({'message': 'User created'}, status=201)
 
-def add(request):
-    if request.method == 'GET':
-        return render(request, 'addExpense.html')
-    
-    if request.method == 'POST':
-        amount = request.POST.get('amount')
-        category = request.POST.get('category')
-        date = request.POST.get('date')
-        Expense.objects.create(amount=amount, category=category, date=date, user=request.user)
-        return render(request, 'dashboard.html')
 
-def list(request):
-    expenses = Expense.objects.all()
-    context = {'expenses': expenses}
-    return render(request, 'listExpense.html', context)
+@api_view(['POST'])
+def login_view(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
 
-def delete(request):
-    if request.method == 'GET':
-        expenses = Expense.objects.all()
-        context = {'expenses': expenses}
-        return render(request, 'deleteExpense.html', context)
-    
-    if request.method == 'POST':
-        expense_id = request.POST.get('expense_id')
-        expense = get_object_or_404(Expense, id=expense_id)
+    user = authenticate(username=username, password=password)
 
-        expense.delete()
-        return redirect('delete')
+    if user is not None:
+        refresh = RefreshToken.for_user(user)
+        return Response({'access': str(refresh.access_token)})
+
+    return Response({'error': 'Invalid credentials'}, status=401)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def addExpense(request):
+    amount = request.data.get('amount')
+    category = request.data.get('category')
+    date = request.data.get('date')
+
+    Expense.objects.create(amount=amount, category=category, date=date, user=request.user)
+    return Response({'message': 'Expense added'}, status=201)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def listExpenses(request):
+    expenses = Expense.objects.filter(user=request.user)
+    if expenses.exists():
+        return Response(list(expenses.values()), status=200)
+    return Response({'message': 'No Expenses Recorded'})
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def deleteExpense(request):
+    id = request.data.get('id')
+    expense = Expense.objects.filter(id=id, user=request.user).first()
+
+    if not expense:
+        return Response({'error': 'Expense not found'}, status=404)
+
+    expense.delete()
+    return Response(status=204)

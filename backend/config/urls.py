@@ -21,11 +21,9 @@ from . import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.index, name="index"),
-    path('api/login', views.login, name="login"),
-    path('accounts/register', views.register, name="register"),
-    path('dashboard/', views.dashboard, name="dashboard"),
-    path('addExpense', views.add, name='add'),
-    path('listExpense', views.list, name='list'),
-    path('deleteExpense', views.delete, name='delete'),
+    path('api/login', views.login_view, name="login"),
+    path('api/register', views.register_view, name="register"),
+    path('api/expenses/add', views.addExpense, name="addExpense"),
+    path('api/expenses', views.listExpenses, name="listExpenses"),
+    path('api/expenses/delete', views.deleteExpense, name="deleteExpenses"),
 ]
